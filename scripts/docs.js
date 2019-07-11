@@ -15,32 +15,33 @@ module.exports = (robot) => {
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    // promiseを利用して非同期処理を行う
-    const promise = new Promise((resolve, reject) => {
-      // authorizeと同じことを実行
-      const content = fs.readFileSync('credentials.json');
-      const credentials = JSON.parse(content);
-      console.log("authorize");
-      const {client_secret, client_id, redirect_uris} = credentials.installed;
-      const oAuth2Client = new google.auth.OAuth2(
-          client_id, client_secret, redirect_uris[0]);
-
-      // Check if we have previously stored a token.
-      fs.readFile(TOKEN_PATH, (err, token) => {
-        if (err) return getAccessToken(oAuth2Client, callback);
-        oAuth2Client.setCredentials(JSON.parse(token));
-        console.log("authorizeのなかの2client: " + oAuth2Client);
-        resolve(oAuth2Client);
-      });
-    });
-    promise.then((clientValue) => {
-      console.log("thenのところ");
+    authorizePromise().then((clientValue) => {
+      res.send("ドキュメントを新規作成しています");
       createDoc(clientValue);
     });
   });
 };
 
+// promiseを使って非同期処理(OAuth認証)を行う
+function authorizePromise() {
+  return new Promise(function(resolve, reject) {
+    // promiseを利用して非同期処理を行う
+    // authorizeと同じことを実行
+    const content = fs.readFileSync('credentials.json');
+    const credentials = JSON.parse(content);
+    console.log("authorize");
+    const {client_secret, client_id, redirect_uris} = credentials.installed;
+    const oAuth2Client = new google.auth.OAuth2(
+        client_id, client_secret, redirect_uris[0]);
 
+    // Check if we have previously stored a token.
+    fs.readFile(TOKEN_PATH, (err, token) => {
+      if (err) return getAccessToken(oAuth2Client, callback);
+      oAuth2Client.setCredentials(JSON.parse(token));
+      resolve(oAuth2Client); // 認証が成功するとresolveを返す
+    });
+  });
+}
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -48,20 +49,20 @@ module.exports = (robot) => {
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-function authorize(credentials) {
-  console.log("authorize");
-  const {client_secret, client_id, redirect_uris} = credentials.installed;
-  const oAuth2Client = new google.auth.OAuth2(
-      client_id, client_secret, redirect_uris[0]);
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, (err, token) => {
-    if (err) return getAccessToken(oAuth2Client, callback);
-    oAuth2Client.setCredentials(JSON.parse(token));
-    console.log("authorizeのなかの2client: " + oAuth2Client);
-    return oAuth2Client;
-  });
-}
+// function authorize(credentials) {
+//   console.log("authorize");
+//   const {client_secret, client_id, redirect_uris} = credentials.installed;
+//   const oAuth2Client = new google.auth.OAuth2(
+//       client_id, client_secret, redirect_uris[0]);
+//
+//   // Check if we have previously stored a token.
+//   fs.readFile(TOKEN_PATH, (err, token) => {
+//     if (err) return getAccessToken(oAuth2Client, callback);
+//     oAuth2Client.setCredentials(JSON.parse(token));
+//     console.log("authorizeのなかの2client: " + oAuth2Client);
+//     return oAuth2Client;
+//   });
+// }
 
 /**
  * Get and store new token after prompting for user authorization, and then
