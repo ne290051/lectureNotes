@@ -8,10 +8,10 @@ const SCOPES = ['https://www.googleapis.com/auth/documents.readonly'];
 const TOKEN_PATH = 'token.json';
 
 module.exports = (robot) => {
-  robot.respond(/DOC$/i, (res) => {
+  robot.respond(/DOC START$/i, (res) => {
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
-    authorize(JSON.parse(content), printDocTitle); // 認証できたら第2引数の関数を実行する
+    authorize(JSON.parse(content), createDoc, '195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE'); // 認証できたら第2引数の関数を実行する
   });
 };
 
@@ -22,7 +22,7 @@ module.exports = (robot) => {
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-function authorize(credentials, callback) {
+function authorize(credentials, callback, arg) {
   console.log("authorize");
   const {client_secret, client_id, redirect_uris} = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
@@ -32,7 +32,7 @@ function authorize(credentials, callback) {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
-    callback(oAuth2Client);
+    callback(oAuth2Client, arg);
   });
 }
 
@@ -76,5 +76,17 @@ function printDocTitle(auth) {
   }, (err, res1) => {
     if (err) return console.log('The API returned an error: ' + err);
     console.log(`The title of the document is: ${res1.data.title}`);
+  });
+}
+// ドキュメントのIDでファイルのタイトルを調べる
+function getDocTitle(auth, myDocumentId) {
+  const docs = google.docs({version: 'v1', auth});
+  const params = {
+    documentId: myDocumentId,
+  };
+  docs.documents.get(params, (err, res) => {
+    if (err) { return console.log('The API returned an error: ' + err);}
+    console.log(`The title of the document is: ${res.data.title}`);
+    console.log("arg is: "+myDocumentId);
   });
 }
