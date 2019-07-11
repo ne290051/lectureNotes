@@ -9,11 +9,37 @@ const TOKEN_PATH = 'token.json';
 
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
+    let roomId = res.message.room;
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
+  robot.respond(/D$/i, (res) => {
+    // promiseを利用して非同期処理を行う
+    const promise = new Promise((resolve, reject) => {
+      // authorizeと同じことを実行
+      const content = fs.readFileSync('credentials.json');
+      const credentials = JSON.parse(content);
+      console.log("authorize");
+      const {client_secret, client_id, redirect_uris} = credentials.installed;
+      const oAuth2Client = new google.auth.OAuth2(
+          client_id, client_secret, redirect_uris[0]);
+
+      // Check if we have previously stored a token.
+      fs.readFile(TOKEN_PATH, (err, token) => {
+        if (err) return getAccessToken(oAuth2Client, callback);
+        oAuth2Client.setCredentials(JSON.parse(token));
+        console.log("authorizeのなかの2client: " + oAuth2Client);
+        resolve(oAuth2Client);
+      });
+    });
+    promise.then((clientValue) => {
+      console.log("thenのところ");
+      createDoc(clientValue);
+    });
+  });
 };
+
 
 
 /**
@@ -22,7 +48,7 @@ module.exports = (robot) => {
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-function authorize(credentials, callback) {
+function authorize(credentials) {
   console.log("authorize");
   const {client_secret, client_id, redirect_uris} = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
@@ -32,7 +58,8 @@ function authorize(credentials, callback) {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
-    callback(oAuth2Client);
+    console.log("authorizeのなかの2client: " + oAuth2Client);
+    return oAuth2Client;
   });
 }
 
