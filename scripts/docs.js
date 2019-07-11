@@ -15,11 +15,20 @@ module.exports = (robot) => {
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    authorizePromise().then((clientValue) => {
-      res.send("ドキュメントを新規作成しています");
-      createDoc(clientValue);
-    });
+    let roomId = res.message.room; // トークルームID
+    authorizePromise() // 認証
+    .then(createDocPromise) // 新規ドキュメント作成
+    .then(printTitlePromise) // ドキュメント名を出力
+    .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg));
   });
+
+  function sendMessage(roomId, msg) { // ここに書かないとメッセージ送信できない
+    return new Promise(function(resolve, reject) {
+      console.log("メッセージを送ります: " + msg + roomId);
+      robot.send({ room: roomId }, { text: msg });
+      resolve();
+    });
+  }
 };
 
 // promiseを使って非同期処理(OAuth認証)を行う
@@ -38,7 +47,27 @@ function authorizePromise() {
     fs.readFile(TOKEN_PATH, (err, token) => {
       if (err) return getAccessToken(oAuth2Client, callback);
       oAuth2Client.setCredentials(JSON.parse(token));
+      console.log("authoP終わり");
       resolve(oAuth2Client); // 認証が成功するとresolveを返す
+    });
+  });
+}
+function printTitlePromise(title) {
+  return new Promise(function(resolve, reject) {
+    console.log("printTitleP始め");
+    console.log(title);
+    resolve(title);
+  });
+}
+function createDocPromise(auth) {
+  return new Promise(function(resolve, reject) {
+    const docs = google.docs({version: 'v1', auth});
+    const params = {};
+    docs.documents.create(params, (err, res) => {
+      if (err) { return console.log('The API returned an error: ' + err);}
+      console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
+      console.log("createDocP終わり");
+      resolve(res.data.title);
     });
   });
 }
@@ -116,15 +145,5 @@ function getDocTitle(auth, myDocumentId) {
     if (err) { return console.log('The API returned an error: ' + err);}
     console.log(`The title of the document is: ${res.data.title}`);
     console.log("arg is: "+myDocumentId);
-  });
-}
-
-// ドキュメントの作成
-function createDoc(auth) {
-  const docs = google.docs({version: 'v1', auth});
-  const params = {};
-  docs.documents.create(params, (err, res) => {
-    if (err) { return console.log('The API returned an error: ' + err);}
-    console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
   });
 }
