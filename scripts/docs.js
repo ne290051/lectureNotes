@@ -4,14 +4,14 @@ const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
 
-const SCOPES = ['https://www.googleapis.com/auth/documents.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/documents'];
 const TOKEN_PATH = 'token.json';
 
 module.exports = (robot) => {
-  robot.respond(/DOC START$/i, (res) => {
+  robot.respond(/DOC$/i, (res) => {
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
-    authorize(JSON.parse(content), createDoc, '195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE'); // 認証できたら第2引数の関数を実行する
+    authorize(JSON.parse(content), createDoc, null); // 認証できたら第2引数の関数を実行する
   });
 };
 
@@ -88,5 +88,15 @@ function getDocTitle(auth, myDocumentId) {
     if (err) { return console.log('The API returned an error: ' + err);}
     console.log(`The title of the document is: ${res.data.title}`);
     console.log("arg is: "+myDocumentId);
+  });
+}
+
+// ドキュメントの作成
+function createDoc(auth, params_test) {
+  const docs = google.docs({version: 'v1', auth});
+  const params = {};
+  docs.documents.create(params, (err, res) => {
+    if (err) { return console.log('The API returned an error: ' + err);}
+    console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
   });
 }
