@@ -11,7 +11,7 @@ module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
-    authorize(JSON.parse(content), createDoc, null); // 認証できたら第2引数の関数を実行する
+    authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
 };
 
@@ -22,7 +22,7 @@ module.exports = (robot) => {
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-function authorize(credentials, callback, arg) {
+function authorize(credentials, callback) {
   console.log("authorize");
   const {client_secret, client_id, redirect_uris} = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
@@ -32,7 +32,7 @@ function authorize(credentials, callback, arg) {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
-    callback(oAuth2Client, arg);
+    callback(oAuth2Client);
   });
 }
 
@@ -92,7 +92,7 @@ function getDocTitle(auth, myDocumentId) {
 }
 
 // ドキュメントの作成
-function createDoc(auth, params_test) {
+function createDoc(auth) {
   const docs = google.docs({version: 'v1', auth});
   const params = {};
   docs.documents.create(params, (err, res) => {
