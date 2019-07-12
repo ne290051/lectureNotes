@@ -6,6 +6,7 @@ const {google} = require('googleapis');
 
 const SCOPES = ['https://www.googleapis.com/auth/documents'];
 const TOKEN_PATH = 'token.json';
+var util = require('util');
 
 let roomId;
 let documentId;
@@ -17,12 +18,49 @@ module.exports = (robot) => {
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
+    console.log("ここはd");
     roomId = res.message.room;
     authorizePromise() // 認証
     .then(createDocPromise) // 新規ドキュメント作成
-    .then(printTitlePromise) // ドキュメント名を出力
-    .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
-    .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId));
+    // .then(printTitlePromise) // ドキュメント名を出力
+    // .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
+    // .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId))
+    .then(updateDocPromise);
+  });
+  robot.respond(/T$/i, (res) => {
+    console.log(inputText);
+    let sendTxt = util.inspect(inputText,false,null);
+    res.send(sendTxt);
+  });
+  robot.respond(/NOTE$/i, (res) => { // noteモード開始
+    if (noteMode == false) {
+      res.send("markdownからノートを作ります。");
+      noteMode = true;
+    } else {
+      noteMode = false;
+      res.send("noteモードを終了しました。")
+      res.send(util.inspect(inputText[roomId], false, null));
+    }
+  });
+  robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
+    var slicedMessage = res.message.text.slice(6); // 先頭のHubot を取り除く
+    console.log(slicedMessage);
+    if ( slicedMessage.search(/(^|\n)(t|note)$/) != -1 ) { // tとnoteコマンドと競合しないようにする
+      return;
+    } else if (noteMode == true) {
+      // storeMessage(res.message.room, res.match[1])
+      roomId = res.message.room;
+      if (slicedMessage.match(/\n/) != null) { // \nが入っているときは行にわける
+        var lines = slicedMessage.split('\n');
+        for (v in lines) {
+          console.log("保存する文章: "+lines[v]);
+          storeMessage(roomId, lines[v]);
+        }
+      } else {
+        storeMessage(roomId, slicedMessage);
+      }
+      // res.send(inputText[roomId]);
+    }
   });
 
   function sendMessage(roomId, msg) { // ここに書かないとメッセージ送信できない
@@ -75,8 +113,33 @@ function createDocPromise(auth) {
       console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
       console.log("新規作成されたドキュメントのid: " + res.data.documentId);
       console.log("createDocP終わり");
-      resolve(res.data.title);
+      resolve(auth);
     });
+  });
+}
+function updateDocPromise(auth) {
+  return new Promise(function(resolve, reject) {
+    const docs = google.docs({version: 'v1', auth});
+    const params = {
+      "documentId": documentId,
+      "resource": {
+        "requests": [
+          {
+            "insertText": {
+              "text": "テスト",
+              "location": {
+                "index": 1
+              }
+            }
+          }
+        ]
+      }
+    };
+    docs.documents.batchUpdate(params, (err, res) => {
+      if (err) { return console.log('The API returned an error: ' + err);}
+      console.log("アップデートしました。");
+    });
+    resolve();
   });
 }
 
@@ -155,3 +218,43 @@ function getDocTitle(auth, myDocumentId) {
     console.log("arg is: "+myDocumentId);
   });
 }
+
+var inputText = {
+  // キーはroomId、値はメッセージの配列
+  // inputText["001"] でメッセージの配列を取得できる
+  "001": ["# 授業メモ", "## 第12回 7/10",],
+  "002": ["# 授業メモ", "## 第1回 7/10",],
+}
+roomId = "invalid";
+var noteMode = false; // trueのときは入力をすべてノートに入力する
+
+function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
+  // var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
+  if (inputText[roomId]) {
+    console.log("すでに存在するroomIdです。");
+    inputText[roomId].push(message);
+  } else {
+    console.log("新しいroomIdです。");
+    inputText[roomId] = []; // 新しく配列を作成する
+    inputText[roomId].push(message);
+  }
+}
+/* 見出し1にするリクエスト
+手順: 下から解析する、下からスタイル変更リクエストを出し、先頭に挿入する
+{
+  "requests": [
+    {
+      "updateParagraphStyle": {
+        "range": {
+          "startIndex": 1,
+          "endIndex": 2
+        },
+        "paragraphStyle": {
+          "namedStyleType": "HEADING_1"
+        },
+        "fields": "*"
+      }
+    }
+  ]
+}
+*/
