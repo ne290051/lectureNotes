@@ -65,8 +65,9 @@ function printTitlePromise(title) {
 function createDocPromise(auth) {
   return new Promise(function(resolve, reject) {
     const docs = google.docs({version: 'v1', auth});
+    let date = new Date().toISOString();
     const params = {
-      title: roomId,
+      title: roomId+"_"+date,
     };
     docs.documents.create(params, (err, res) => {
       if (err) { return console.log('The API returned an error: ' + err);}
