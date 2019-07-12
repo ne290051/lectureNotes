@@ -7,26 +7,29 @@ const {google} = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/documents'];
 const TOKEN_PATH = 'token.json';
 
+let roomId;
+let documentId;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
-    let roomId = res.message.room;
+    roomId = res.message.room;
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    let roomId = res.message.room; // トークルームID
+    roomId = res.message.room;
     authorizePromise() // 認証
     .then(createDocPromise) // 新規ドキュメント作成
     .then(printTitlePromise) // ドキュメント名を出力
-    .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg));
+    .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
+    .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId));
   });
 
   function sendMessage(roomId, msg) { // ここに書かないとメッセージ送信できない
     return new Promise(function(resolve, reject) {
-      console.log("メッセージを送ります: " + msg + roomId);
+      console.log("メッセージを送ります: " + msg);
       robot.send({ room: roomId }, { text: msg });
-      resolve();
+      resolve(roomId, msg);
     });
   }
 };
@@ -62,10 +65,14 @@ function printTitlePromise(title) {
 function createDocPromise(auth) {
   return new Promise(function(resolve, reject) {
     const docs = google.docs({version: 'v1', auth});
-    const params = {};
+    const params = {
+      title: roomId,
+    };
     docs.documents.create(params, (err, res) => {
       if (err) { return console.log('The API returned an error: ' + err);}
+      documentId = res.data.documentId;
       console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
+      console.log("新規作成されたドキュメントのid: " + res.data.documentId);
       console.log("createDocP終わり");
       resolve(res.data.title);
     });
