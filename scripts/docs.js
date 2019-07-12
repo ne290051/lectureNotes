@@ -31,6 +31,8 @@ module.exports = (robot) => {
     console.log(inputText);
     let sendTxt = util.inspect(inputText,false,null);
     res.send(sendTxt);
+    let arr = [ 'hello', 'world', 'こんにちは！' ];
+    console.log(mergeText(arr));
   });
   robot.respond(/NOTE$/i, (res) => { // noteモード開始
     if (noteMode == false) {
@@ -52,7 +54,7 @@ module.exports = (robot) => {
       roomId = res.message.room;
       if (slicedMessage.match(/\n/) != null) { // \nが入っているときは行にわける
         var lines = slicedMessage.split('\n');
-        for (v in lines) {
+        for (var v in lines) {
           console.log("保存する文章: "+lines[v]);
           storeMessage(roomId, lines[v]);
         }
@@ -117,16 +119,47 @@ function createDocPromise(auth) {
     });
   });
 }
+function mergeReverseText(txt) {
+  var returnTxt = "";
+  // txt.reverse();
+  for (var t in txt) {
+    returnTxt += txt[t] + '\n';
+  }
+  console.log("マージされたのは"+returnTxt+"です。");
+  return returnTxt;
+}
+// [ 'hello', 'world', 'こんにちは！' ]
 function updateDocPromise(auth) {
   return new Promise(function(resolve, reject) {
     const docs = google.docs({version: 'v1', auth});
-    const params = {
+    var content = [ 'hello', 'world', 'こんにちは！' ];
+    const style1Params = { // 見出し1のスタイルを適用するparams
+      "updateParagraphStyle": {
+        "range": {
+          "startIndex": 1,
+          "endIndex": 2
+        },
+        "fields": "*",
+        "paragraphStyle": {
+          "namedStyleType": "HEADING_1"
+        }
+      }
+    };
+    const insertTextParams = {
+      "insertText": {
+        "location": {
+          "index": 1
+        },
+        "text": mergeReverseText(content)
+      }
+    };
+    const params = { // ドキュメント変更の基本的なparams、これに追加していく
       "documentId": documentId,
       "resource": {
         "requests": [
           {
             "insertText": {
-              "text": "テスト",
+              "text": mergeReverseText(content),
               "location": {
                 "index": 1
               }
@@ -135,7 +168,14 @@ function updateDocPromise(auth) {
         ]
       }
     };
+
+    // 基本paramsに見出し1スタイル、テキスト挿入のリクエストparamsを合体している
+    params.resource.requests.push(style1Params, insertTextParams);
+
+    console.log("最終的なリクエスト文: "+util.inspect(params, false, null));
+
     docs.documents.batchUpdate(params, (err, res) => {
+      console.log(documentId);
       if (err) { return console.log('The API returned an error: ' + err);}
       console.log("アップデートしました。");
     });
