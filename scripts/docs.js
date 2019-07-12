@@ -123,7 +123,7 @@ function mergeReverseText(txt) {
   var returnTxt = "";
   // txt.reverse();
   for (var t in txt) {
-    returnTxt += txt[t] + '\n';
+    returnTxt += txt[t];
   }
   console.log("マージされたのは"+returnTxt+"です。");
   return returnTxt;
@@ -162,7 +162,13 @@ function updateDocPromise(auth) {
     };
 
     // 基本paramsに見出し1スタイル、テキスト挿入のリクエストparamsを合体している
-    params.resource.requests.push(style1Params, generateTextParams(["hello\nworld!!"]));
+    // 見出し1、hello\nworldを追加
+    params.resource.requests.push(
+      generateStyleChangeParams(0), generateTextParams(["\n", "- エンティティ テーブル"]),
+      generateStyleChangeParams(3), generateTextParams(["\n", "ER図の構成要素"]),
+      generateStyleChangeParams(2), generateTextParams(["\n", "データモデリング"]),
+      generateStyleChangeParams(1), generateTextParams(["システムモデリング 第13回 7/10"])
+    );
 
     console.log("最終的なリクエスト文: "+util.inspect(params, false, null));
 
@@ -174,8 +180,22 @@ function updateDocPromise(auth) {
     resolve();
   });
 }
-function generateTextParams(text) {
+function generateTextParams(text) { // テキスト挿入リクエストのparams
   return {"insertText": {"location": {"index": 1},"text": mergeReverseText(text)}};
+}
+const namedStyle = { // 名前付きのスタイルの辞書
+  0: "NORMAL_TEXT",
+  1: "HEADING_1",
+  2: "HEADING_2",
+  3: "HEADING_3",
+  4: "HEADING_4",
+  5: "HEADING_5",
+  6: "HEADING_6",
+  7: "TITLE",
+  8: "SUBTITLE"
+};
+function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
+  return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
 }
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
