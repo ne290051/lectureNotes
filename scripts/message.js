@@ -51,12 +51,11 @@ module.exports = (robot) => {
           storeMessage(roomId, lines[v]);
         }
       } else {
-        storeMessage(roomId, res.message.text);
+        storeMessage(roomId, slicedMessage);
       }
-
       // res.send(inputText[roomId]);
     }
-  })
+  });
 };
 /* 見出し1にするリクエスト
 手順: 下から解析する、下からスタイル変更リクエストを出し、先頭に挿入する
