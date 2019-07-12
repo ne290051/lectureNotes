@@ -10,14 +10,14 @@ let roomId = "invalid";
 var noteMode = false; // trueのときは入力をすべてノートに入力する
 
 function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
-  var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
+  // var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
   if (inputText[roomId]) {
     console.log("すでに存在するroomIdです。");
-    inputText[roomId].push(slicedMessage);
+    inputText[roomId].push(message);
   } else {
     console.log("新しいroomIdです。");
     inputText[roomId] = []; // 新しく配列を作成する
-    inputText[roomId].push(slicedMessage);
+    inputText[roomId].push(message);
   }
 }
 module.exports = (robot) => {
@@ -44,8 +44,17 @@ module.exports = (robot) => {
     } else if (noteMode == true) {
       // storeMessage(res.message.room, res.match[1])
       roomId = res.message.room;
-      storeMessage(roomId, res.message.text);
-      res.send(inputText[roomId]);
+      if (slicedMessage.match(/\n/) != null) { // \nが入っているときは行にわける
+        var lines = slicedMessage.split('\n');
+        for (v in lines) {
+          console.log("保存する文章: "+lines[v]);
+          storeMessage(roomId, lines[v]);
+        }
+      } else {
+        storeMessage(roomId, res.message.text);
+      }
+
+      // res.send(inputText[roomId]);
     }
   })
 };
