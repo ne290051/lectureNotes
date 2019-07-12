@@ -157,20 +157,12 @@ function updateDocPromise(auth) {
       "documentId": documentId,
       "resource": {
         "requests": [
-          {
-            "insertText": {
-              "text": mergeReverseText(content),
-              "location": {
-                "index": 1
-              }
-            }
-          }
         ]
       }
     };
 
     // 基本paramsに見出し1スタイル、テキスト挿入のリクエストparamsを合体している
-    params.resource.requests.push(style1Params, insertTextParams);
+    params.resource.requests.push(style1Params, generateTextParams(["hello\nworld!!"]));
 
     console.log("最終的なリクエスト文: "+util.inspect(params, false, null));
 
@@ -182,7 +174,9 @@ function updateDocPromise(auth) {
     resolve();
   });
 }
-
+function generateTextParams(text) {
+  return {"insertText": {"location": {"index": 1},"text": mergeReverseText(text)}};
+}
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
  * given callback function.
