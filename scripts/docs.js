@@ -4,7 +4,7 @@ const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
 
-const SCOPES = ['https://www.googleapis.com/auth/documents'];
+const SCOPES = ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive.file'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
 
@@ -25,7 +25,8 @@ module.exports = (robot) => {
     // .then(printTitlePromise) // ドキュメント名を出力
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId))
-    .then(updateDocPromise);
+    // .then(updateDocPromise)
+    .then(listFiles);
   });
   robot.respond(/T$/i, (res) => {
     console.log(inputText);
@@ -88,7 +89,8 @@ function authorizePromise() {
 
     // Check if we have previously stored a token.
     fs.readFile(TOKEN_PATH, (err, token) => {
-      if (err) return getAccessToken(oAuth2Client, callback);
+      // if (err) return getAccessToken(oAuth2Client, callback);
+      if (err) return getAccessToken(oAuth2Client);
       oAuth2Client.setCredentials(JSON.parse(token));
       console.log("authoP終わり");
       resolve(oAuth2Client); // 認証が成功するとresolveを返す
@@ -197,6 +199,25 @@ const namedStyle = { // 名前付きのスタイルの辞書
 function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
   return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
 }
+
+function listFiles(auth) {
+  const drive = google.drive({version: 'v3', auth});
+  drive.files.list({
+    pageSize: 10,
+    fields: "nextPageToken, files(id, name)",
+  }, (err, res) => {
+    if (err) return console.log('The API returned an error: ' + err);
+    const files = res.data.files;
+    if (files.length) {
+      console.log('Files:');
+      files.map((file) => {
+        console.log(`${file.name} (${file.id})`);
+      });
+    } else {
+      console.log('No files found.');
+    }
+  });
+}
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
  * given callback function.
@@ -224,6 +245,7 @@ function generateStyleChangeParams(level) { // 見出しのスタイル変更リ
  * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
  * @param {getEventsCallback} callback The callback for the authorized client.
  */
+// function getAccessToken(oAuth2Client, callback) {
 function getAccessToken(oAuth2Client, callback) {
   console.log("getAccessToken");
   const authUrl = oAuth2Client.generateAuthUrl({
@@ -245,7 +267,8 @@ function getAccessToken(oAuth2Client, callback) {
         if (err) return console.error(err);
         console.log('Token stored to', TOKEN_PATH);
       });
-      callback(oAuth2Client);
+      // callback(oAuth2Client);
+      return;
     });
   });
 }
