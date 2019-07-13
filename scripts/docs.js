@@ -173,7 +173,7 @@ function downloadFilePromise(auth) {
   return new Promise(function(resolve, reject) {
     const drive = google.drive({version: 'v3', auth});
     console.log("drive: "+drive);
-    var fileId = "1d_QUhZR_78lGO6tbWkbSx65y3zdde3gsPu8tEVXJtHg";
+    var fileId = documentId;
     var dest = fs.createWriteStream('./tmp/resume.pdf');
     drive.files.export({fileId: fileId, mimeType: 'application/pdf'}, {responseType: 'stream'},
     function(err, res){
