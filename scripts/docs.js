@@ -336,6 +336,8 @@ module.exports = (robot) => {
         } else if (messages[m].match(/^###### (.*)$/ig)) {
           params.resource.requests.push(generateStyleChangeParams(6));
           slicedMessage = messages[m].slice(7);
+        } else {
+          params.resource.requests.push(generateStyleChangeParams(0));
         }
         params.resource.requests.push(generateTextParams(["\n", slicedMessage]));
       }
