@@ -4,7 +4,7 @@ const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
 
-const SCOPES = ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive.file'];
+const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
 
@@ -21,12 +21,13 @@ module.exports = (robot) => {
     console.log("ここはd");
     roomId = res.message.room;
     authorizePromise() // 認証
-    .then(createDocPromise) // 新規ドキュメント作成
+    // .then(createDocPromise) // 新規ドキュメント作成
     // .then(printTitlePromise) // ドキュメント名を出力
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId))
     // .then(updateDocPromise)
-    .then(listFiles);
+    // .then(listFiles)
+    .then(downloadFilePromise);
   });
   robot.respond(/T$/i, (res) => {
     console.log(inputText);
@@ -179,25 +180,8 @@ function updateDocPromise(auth) {
       if (err) { return console.log('The API returned an error: ' + err);}
       console.log("アップデートしました。");
     });
-    resolve();
+    resolve(auth);
   });
-}
-function generateTextParams(text) { // テキスト挿入リクエストのparams
-  return {"insertText": {"location": {"index": 1},"text": mergeReverseText(text)}};
-}
-const namedStyle = { // 名前付きのスタイルの辞書
-  0: "NORMAL_TEXT",
-  1: "HEADING_1",
-  2: "HEADING_2",
-  3: "HEADING_3",
-  4: "HEADING_4",
-  5: "HEADING_5",
-  6: "HEADING_6",
-  7: "TITLE",
-  8: "SUBTITLE"
-};
-function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
-  return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
 }
 
 function listFiles(auth) {
@@ -208,6 +192,7 @@ function listFiles(auth) {
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
     const files = res.data.files;
+    console.log("resは"+res);
     if (files.length) {
       console.log('Files:');
       files.map((file) => {
@@ -216,6 +201,28 @@ function listFiles(auth) {
     } else {
       console.log('No files found.');
     }
+  });
+}
+function downloadFilePromise(auth) {
+  return new Promise(function(resolve, reject) {
+    const drive = google.drive({version: 'v3', auth});
+    console.log("drive: "+drive);
+    var fileId = "1d_QUhZR_78lGO6tbWkbSx65y3zdde3gsPu8tEVXJtHg";
+    var dest = fs.createWriteStream('./tmp/resume.pdf');
+    drive.files.export({fileId: fileId, mimeType: 'application/pdf'}, {responseType: 'stream'},
+    function(err, res){
+        res.data
+        .on('end', () => {
+            console.log('Done');
+        })
+        .on('error', err => {
+            console.log('Error', err);
+        })
+        .pipe(dest);
+    });
+    console.log("保存されました。");
+
+    resolve(auth);
   });
 }
 /**
@@ -316,6 +323,36 @@ function storeMessage(roomId, message) { // roomIdをキーとするメッセー
     inputText[roomId].push(message);
   }
 }
+function generateTextParams(text) { // テキスト挿入リクエストのparams
+  return {"insertText": {"location": {"index": 1},"text": mergeReverseText(text)}};
+}
+const namedStyle = { // 名前付きのスタイルの辞書
+  0: "NORMAL_TEXT",
+  1: "HEADING_1",
+  2: "HEADING_2",
+  3: "HEADING_3",
+  4: "HEADING_4",
+  5: "HEADING_5",
+  6: "HEADING_6",
+  7: "TITLE",
+  8: "SUBTITLE"
+};
+function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
+  return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
+}
+function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
+  message = [ 'hello', 'world', '見出し1' ];
+  const params = {"documentId": documentId,"resource": {"requests": []} // ドキュメント変更の基本的なparams、これに追加していく
+  message.reverse();
+  for (m in messages) {
+    params.resource.requests.push(
+      generateStyleChangeParams(0),
+      generateTextParams([message[m]]),
+    )
+  }
+  return params;
+}
+
 /* 見出し1にするリクエスト
 手順: 下から解析する、下からスタイル変更リクエストを出し、先頭に挿入する
 {
