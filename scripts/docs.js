@@ -9,7 +9,7 @@ const TOKEN_PATH = 'token.json';
 var util = require('util');
 
 let roomId;
-let documentId;
+var documentId;
 let userParams;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
@@ -19,7 +19,6 @@ module.exports = (robot) => {
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    console.log("ここはd");
     roomId = res.message.room;
     authorizePromise() // 認証
     .then(createDocPromise) // 新規ドキュメント作成
@@ -136,7 +135,7 @@ function mergeReverseText(txt) {
 function updateDocPromise(auth) {
   return new Promise(function(resolve, reject) {
     const docs = google.docs({version: 'v1', auth});
-    var content = [ 'hello', 'world', '見出し1' ];
+    var content = [ '# システムモデリング 第13回 7/10', '## データモデリング', '### ER図の構成要素', 'ER図とは、Entity Relationship' ];
     const userParams = sendMessageBuilder(content);
 
     console.log("最終的なリクエスト文: "+util.inspect(userParams, false, null));
@@ -145,8 +144,8 @@ function updateDocPromise(auth) {
       console.log(documentId);
       if (err) { return console.log('The API returned an error: ' + err);}
       console.log("アップデートしました。");
+      resolve(auth);
     });
-    resolve(auth);
   });
 }
 
@@ -173,9 +172,10 @@ function downloadFilePromise(auth) {
   return new Promise(function(resolve, reject) {
     const drive = google.drive({version: 'v3', auth});
     console.log("drive: "+drive);
-    var fileId = documentId;
+    // var fileId = "1Vjn9lqFmxyxDS9xzBT-_fo9WjW1hfI9SUtcYWdvoJHI";
     var dest = fs.createWriteStream('./tmp/resume.pdf');
-    drive.files.export({fileId: fileId, mimeType: 'application/pdf'}, {responseType: 'stream'},
+    console.log("DL開始: " + documentId);
+    drive.files.export({fileId: documentId, mimeType: 'application/pdf'}, {responseType: 'stream'},
     function(err, res){
       if (err) {return console.error(err);}
         res.data
@@ -310,12 +310,17 @@ function sendMessageBuilder(messages) { // メッセージの配列を渡すと�
   const params = {"documentId": documentId,"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
   console.log("ここでparams"+util.inspect(params));
   messages.reverse();
-  for (var m in messages) {
-    params.resource.requests.push(
-      generateStyleChangeParams(0),
-      generateTextParams([messages[m], "\n"]),
-    )
-  }
+
+  params.resource.requests.push(
+    generateStyleChangeParams(0),
+    generateTextParams(["\n", messages[0]]),
+    generateStyleChangeParams(3),
+    generateTextParams(["\n", messages[1]]),
+    generateStyleChangeParams(2),
+    generateTextParams(["\n", messages[2]]),
+    generateStyleChangeParams(1),
+    generateTextParams(["\n", messages[3]]),
+  )
   return params;
 }
 
