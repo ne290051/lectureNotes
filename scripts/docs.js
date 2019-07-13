@@ -33,8 +33,7 @@ module.exports = (robot) => {
     console.log(inputText);
     let sendTxt = util.inspect(inputText,false,null);
     res.send(sendTxt);
-    let arr = [ 'hello', 'world', 'こんにちは！' ];
-    console.log(mergeText(arr));
+    getRoomId();
   });
   robot.respond(/NOTE$/i, (res) => { // noteモード開始
     if (noteMode == false) {
@@ -73,6 +72,10 @@ module.exports = (robot) => {
       robot.send({ room: roomId }, { text: msg });
       resolve(roomId, msg);
     });
+  }
+  function getRoomId() {
+    let user = robot.brain.rooms();
+    return Object.keys(user)[0];
   }
 };
 
