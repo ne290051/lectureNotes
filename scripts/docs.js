@@ -10,6 +10,7 @@ var util = require('util');
 
 let roomId;
 let documentId;
+let userParams;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
     roomId = res.message.room;
@@ -21,11 +22,11 @@ module.exports = (robot) => {
     console.log("ここはd");
     roomId = res.message.room;
     authorizePromise() // 認証
-    // .then(createDocPromise) // 新規ドキュメント作成
+    .then(createDocPromise) // 新規ドキュメント作成
     // .then(printTitlePromise) // ドキュメント名を出力
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメント名: "+msg))
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId))
-    // .then(updateDocPromise)
+    .then(updateDocPromise)
     // .then(listFiles)
     .then(downloadFilePromise);
   });
@@ -135,47 +136,12 @@ function mergeReverseText(txt) {
 function updateDocPromise(auth) {
   return new Promise(function(resolve, reject) {
     const docs = google.docs({version: 'v1', auth});
-    var content = [ 'hello', 'world', 'こんにちは！' ];
-    const style1Params = { // 見出し1のスタイルを適用するparams
-      "updateParagraphStyle": {
-        "range": {
-          "startIndex": 1,
-          "endIndex": 2
-        },
-        "fields": "*",
-        "paragraphStyle": {
-          "namedStyleType": "HEADING_1"
-        }
-      }
-    };
-    const insertTextParams = {
-      "insertText": {
-        "location": {
-          "index": 1
-        },
-        "text": mergeReverseText(content)
-      }
-    };
-    const params = { // ドキュメント変更の基本的なparams、これに追加していく
-      "documentId": documentId,
-      "resource": {
-        "requests": [
-        ]
-      }
-    };
+    var content = [ 'hello', 'world', '見出し1' ];
+    const userParams = sendMessageBuilder(content);
 
-    // 基本paramsに見出し1スタイル、テキスト挿入のリクエストparamsを合体している
-    // 見出し1、hello\nworldを追加
-    params.resource.requests.push(
-      generateStyleChangeParams(0), generateTextParams(["\n", "- エンティティ テーブル"]),
-      generateStyleChangeParams(3), generateTextParams(["\n", "ER図の構成要素"]),
-      generateStyleChangeParams(2), generateTextParams(["\n", "データモデリング"]),
-      generateStyleChangeParams(1), generateTextParams(["システムモデリング 第13回 7/10"])
-    );
+    console.log("最終的なリクエスト文: "+util.inspect(userParams, false, null));
 
-    console.log("最終的なリクエスト文: "+util.inspect(params, false, null));
-
-    docs.documents.batchUpdate(params, (err, res) => {
+    docs.documents.batchUpdate(userParams, (err, res) => {
       console.log(documentId);
       if (err) { return console.log('The API returned an error: ' + err);}
       console.log("アップデートしました。");
@@ -211,6 +177,7 @@ function downloadFilePromise(auth) {
     var dest = fs.createWriteStream('./tmp/resume.pdf');
     drive.files.export({fileId: fileId, mimeType: 'application/pdf'}, {responseType: 'stream'},
     function(err, res){
+      if (err) {return console.error(err);}
         res.data
         .on('end', () => {
             console.log('Done');
@@ -220,7 +187,6 @@ function downloadFilePromise(auth) {
         })
         .pipe(dest);
     });
-    console.log("保存されました。");
 
     resolve(auth);
   });
@@ -341,13 +307,13 @@ function generateStyleChangeParams(level) { // 見出しのスタイル変更リ
   return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
 }
 function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
-  message = [ 'hello', 'world', '見出し1' ];
-  const params = {"documentId": documentId,"resource": {"requests": []} // ドキュメント変更の基本的なparams、これに追加していく
-  message.reverse();
-  for (m in messages) {
+  const params = {"documentId": documentId,"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
+  console.log("ここでparams"+util.inspect(params));
+  messages.reverse();
+  for (var m in messages) {
     params.resource.requests.push(
       generateStyleChangeParams(0),
-      generateTextParams([message[m]]),
+      generateTextParams([messages[m], "\n"]),
     )
   }
   return params;
