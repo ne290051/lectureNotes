@@ -26,7 +26,8 @@ module.exports = (robot) => {
     // .then((msg) => sendMessage(roomId, "新規作成ドキュメントid: "+documentId))
     .then(updateDocPromise)
     // .then(listFiles)
-    .then(downloadFilePromise);
+    .then(downloadFilePromise)
+    .then(sendFilePromise);
   });
   robot.respond(/T$/i, (res) => {
     console.log(inputText);
@@ -184,7 +185,8 @@ module.exports = (robot) => {
         const drive = google.drive({version: 'v3', auth});
         console.log("drive: "+drive);
         // var fileId = "1Vjn9lqFmxyxDS9xzBT-_fo9WjW1hfI9SUtcYWdvoJHI";
-        var dest = fs.createWriteStream('./tmp/resume.pdf');
+        let destFilePath = './tmp/' + getRoomId() + '.pdf';
+        var dest = fs.createWriteStream(destFilePath);
         console.log("DL開始: " + documentId);
         drive.files.export({fileId: documentId, mimeType: 'application/pdf'}, {responseType: 'stream'},
         function(err, res){
@@ -192,14 +194,27 @@ module.exports = (robot) => {
           res.data
           .on('end', () => {
             console.log('Done');
+            resolve(destFilePath);
           })
           .on('error', err => {
             console.log('Error', err);
           })
           .pipe(dest);
         });
-
-        resolve(auth);
+      });
+    }
+    function sendFilePromise(filePath) {
+      return new Promise(function(resolve, reject) {
+        robot.send(
+          { room: getRoomId() },
+          { path: filePath,
+            name: 'output.pdf',    // (Option) アップロード名
+            type: 'application/pdf',   // (Option) MIME
+            text: '完成したPDFです。',   // (Option) ファイルと同時に送信するテキスト
+          }, () => {
+            resolve();
+          }
+        );
       });
     }
     /**
