@@ -8,18 +8,17 @@ const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
 
-let roomId;
 var documentId;
 let userParams;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
-    roomId = res.message.room;
+    let roomId = res.message.room;
     // Load client secrets from a local file.
     const content = fs.readFileSync('credentials.json');
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    roomId = res.message.room;
+    let roomId = res.message.room;
     authorizePromise() // 認証
     .then(createDocPromise) // 新規ドキュメント作成
     // .then(printTitlePromise) // ドキュメント名を出力
@@ -33,7 +32,6 @@ module.exports = (robot) => {
     console.log(inputText);
     let sendTxt = util.inspect(inputText,false,null);
     res.send(sendTxt);
-    getRoomId();
   });
   robot.respond(/NOTE$/i, (res) => { // noteモード開始
     if (noteMode == false) {
@@ -42,12 +40,11 @@ module.exports = (robot) => {
     } else {
       noteMode = false;
       res.send("noteモードを終了しました。")
-      res.send(util.inspect(inputText[roomId], false, null));
+      res.send(util.inspect(inputText[getRoomId()], false, null));
     }
   });
   robot.respond(/mynote$/i, (res) => {
-    let roomId = res.message.room;
-    let myNote = util.inspect(inputText[roomId],false,null);
+    let myNote = util.inspect(inputText[getRoomId()],false,null);
     res.send(myNote);
   });
   robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
@@ -57,15 +54,15 @@ module.exports = (robot) => {
       return;
     } else if (noteMode == true) {
       // storeMessage(res.message.room, res.match[1])
-      roomId = res.message.room;
+      let roomId = res.message.room;
       if (slicedMessage.match(/\n/) != null) { // \nが入っているときは行にわける
         var lines = slicedMessage.split('\n');
         for (var v in lines) {
           console.log("保存する文章: "+lines[v]);
-          storeMessage(roomId, lines[v]);
+          storeMessage(getRoomId(), lines[v]);
         }
       } else {
-        storeMessage(roomId, slicedMessage);
+        storeMessage(getRoomId(), slicedMessage);
       }
       // res.send(inputText[roomId]);
     }
@@ -118,7 +115,7 @@ module.exports = (robot) => {
         const docs = google.docs({version: 'v1', auth});
         let date = new Date().toISOString();
         const params = {
-          title: roomId+"_"+date,
+          title: getRoomId()+"_"+date,
         };
         docs.documents.create(params, (err, res) => {
           if (err) { return console.log('The API returned an error: ' + err);}
@@ -285,7 +282,6 @@ module.exports = (robot) => {
       _00010001: ['# 授業メモ', '## 第12回 7/10',],
       _00010002: ['# 授業メモ', '## 第12回 7/10',],
     }
-    roomId = "invalid";
     var noteMode = false; // trueのときは入力をすべてノートに入力する
 
     function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
