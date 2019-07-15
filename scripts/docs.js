@@ -223,6 +223,7 @@ module.exports = (robot) => {
       return new Promise(function(resolve, reject) {
         // PDFファイル送信まで達成したら、変数にあるコンテンツ内容とサーバのPDFを削除
         delete inputText[getRoomId()];
+        resolve();
         // fs.unlink(filePath, (err) => {
         //   if (err) {throw err;}
         //   else {
