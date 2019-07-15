@@ -47,10 +47,14 @@ module.exports = (robot) => {
     let myNote = util.inspect(inputText[getRoomId()],false,null);
     res.send(myNote);
   });
+  robot.respond(/delete$/i, (res) => {
+    delete inputText[getRoomId()];
+    res.send("ノートの内容を削除しました。");
+  });
   robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
     var slicedMessage = res.message.text.slice(6); // 先頭のHubot を取り除く
     console.log(slicedMessage);
-    if ( slicedMessage.search(/(^|\n)(t|note|d|mynote)$/i) != -1 ) { // 他のコマンドと競合しないようにする
+    if ( slicedMessage.search(/(^|\n)(t|note|d|mynote|delete)$/i) != -1 ) { // 他のコマンドと競合しないようにする
       return;
     } else if (noteMode == true) {
       // storeMessage(res.message.room, res.match[1])
