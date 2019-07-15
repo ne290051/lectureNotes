@@ -45,10 +45,15 @@ module.exports = (robot) => {
       res.send(util.inspect(inputText[roomId], false, null));
     }
   });
+  robot.respond(/mynote$/i, (res) => {
+    let roomId = res.message.room;
+    let myNote = util.inspect(inputText[roomId],false,null);
+    res.send(myNote);
+  });
   robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
     var slicedMessage = res.message.text.slice(6); // 先頭のHubot を取り除く
     console.log(slicedMessage);
-    if ( slicedMessage.search(/(^|\n)(t|note|d)$/) != -1 ) { // tとnoteコマンドと競合しないようにする
+    if ( slicedMessage.search(/(^|\n)(t|note|d|mynote)$/i) != -1 ) { // 他のコマンドと競合しないようにする
       return;
     } else if (noteMode == true) {
       // storeMessage(res.message.room, res.match[1])
@@ -277,8 +282,8 @@ module.exports = (robot) => {
     var inputText = {
       // キーはroomId、値はメッセージの配列
       // inputText["001"] でメッセージの配列を取得できる
-      "001": ["# 授業メモ", "## 第12回 7/10",],
-      "002": ["# 授業メモ", "## 第1回 7/10",],
+      _00010001: ['# 授業メモ', '## 第12回 7/10',],
+      _00010002: ['# 授業メモ', '## 第12回 7/10',],
     }
     roomId = "invalid";
     var noteMode = false; // trueのときは入力をすべてノートに入力する
