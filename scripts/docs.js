@@ -8,7 +8,6 @@ const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
 
-let userParams;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
     let roomId = res.message.room;
@@ -35,6 +34,8 @@ module.exports = (robot) => {
     sendTxt = util.inspect(userNoteMode,false,null);
     res.send(sendTxt);
     sendTxt = util.inspect(userDocumentId,false,null);
+    res.send(sendTxt);
+    sendTxt = util.inspect(userParams,false,null);
     res.send(sendTxt);
   });
   robot.respond(/NOTE$/i, (res) => { // noteモード開始
@@ -151,11 +152,11 @@ module.exports = (robot) => {
         // var content = [ '# システムモデリング 第13回 7/10', '## データモデリング', '### ER図の構成要素', 'ER図とは、Entity Relationship' ];
         var content = inputText[getRoomId()];
         console.log("あなたの発言をドキュメント化します: " + content);
-        const userParams = sendMessageBuilder(content);
+        userParams[getRoomId()] = sendMessageBuilder(content);
 
-        console.log("最終的なリクエスト文: "+util.inspect(userParams, false, null));
+        console.log("最終的なリクエスト文: "+util.inspect(userParams[getRoomId()], false, null));
 
-        docs.documents.batchUpdate(userParams, (err, res) => {
+        docs.documents.batchUpdate(userParams[getRoomId()], (err, res) => {
           console.log(userDocumentId[getRoomId()]);
           if (err) { return console.log('The API returned an error: ' + err);}
           console.log("アップデートしました。");
@@ -328,6 +329,10 @@ module.exports = (robot) => {
       _00010001: "testDocumentId",
       _00010002: "testDocumentId",
     }
+    var userParams = {
+      _00010001: "testParams",
+      _00010002: "testParams",
+    }
 
     function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
       // var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
@@ -360,7 +365,6 @@ module.exports = (robot) => {
     function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
       console.log(userDocumentId);
       const params = {"documentId": userDocumentId[getRoomId()],"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
-      console.log("ここでparams"+util.inspect(params));
       messages.reverse();
 
       for (var m in messages) {
