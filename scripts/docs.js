@@ -27,7 +27,8 @@ module.exports = (robot) => {
     .then(updateDocPromise)
     // .then(listFiles)
     .then(downloadFilePromise)
-    .then(sendFilePromise);
+    .then(sendFilePromise)
+    .then(deleteFilePromise);
   });
   robot.respond(/T$/i, (res) => {
     console.log(inputText);
@@ -212,10 +213,24 @@ module.exports = (robot) => {
             type: 'application/pdf',   // (Option) MIME
             text: '完成したPDFです。',   // (Option) ファイルと同時に送信するテキスト
           }, () => {
-            resolve();
+            console.log("PDF送信完了");
+            resolve(filePath);
           }
         );
       });
+    }
+    function deleteFilePromise(filePath) {
+      return new Promise(function(resolve, reject) {
+        // PDFファイル送信まで達成したら、変数にあるコンテンツ内容とサーバのPDFを削除
+        delete inputText[getRoomId()];
+        // fs.unlink(filePath, (err) => {
+        //   if (err) {throw err;}
+        //   else {
+        //     console.log('削除しました');
+        //     resolve();
+        //   }
+        // });
+      })
     }
     /**
     * Create an OAuth2 client with the given credentials, and then execute the
