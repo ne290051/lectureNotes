@@ -8,7 +8,6 @@ const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
 
-var documentId;
 let userParams;
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
@@ -18,7 +17,6 @@ module.exports = (robot) => {
     authorize(JSON.parse(content), createDoc); // 認証できたら第2引数の関数を実行する
   });
   robot.respond(/D$/i, (res) => {
-    let roomId = res.message.room;
     authorizePromise() // 認証
     .then(createDocPromise) // 新規ドキュメント作成
     // .then(printTitlePromise) // ドキュメント名を出力
@@ -34,14 +32,18 @@ module.exports = (robot) => {
     console.log(inputText);
     let sendTxt = util.inspect(inputText,false,null);
     res.send(sendTxt);
+    sendTxt = util.inspect(userNoteMode,false,null);
+    res.send(sendTxt);
+    sendTxt = util.inspect(userDocumentId,false,null);
+    res.send(sendTxt);
   });
   robot.respond(/NOTE$/i, (res) => { // noteモード開始
-    if (noteMode == false) {
+    if (userNoteMode[getRoomId()] == false || typeof userNoteMode[getRoomId()] == "undefined") {
       res.send("markdownからノートを作ります。");
-      noteMode = true;
+      userNoteMode[getRoomId()] = true;
     } else {
-      noteMode = false;
-      res.send("noteモードを終了しました。")
+      userNoteMode[getRoomId()] = false;
+      res.send("noteモードを終了しました。");
       res.send(util.inspect(inputText[getRoomId()], false, null));
     }
   });
@@ -58,7 +60,7 @@ module.exports = (robot) => {
     console.log(slicedMessage);
     if ( slicedMessage.search(/(^|\n)(t|note|d|mynote|delete)$/i) != -1 ) { // 他のコマンドと競合しないようにする
       return;
-    } else if (noteMode == true) {
+    } else if (userNoteMode[getRoomId()] == true) {
       // storeMessage(res.message.room, res.match[1])
       let roomId = res.message.room;
       if (slicedMessage.match(/\n/) != null) { // \nが入っているときは行にわける
@@ -125,7 +127,7 @@ module.exports = (robot) => {
         };
         docs.documents.create(params, (err, res) => {
           if (err) { return console.log('The API returned an error: ' + err);}
-          documentId = res.data.documentId;
+          userDocumentId[getRoomId()] = res.data.documentId;
           console.log("新規作成されたドキュメントのタイトル: " + res.data.title);
           console.log("新規作成されたドキュメントのid: " + res.data.documentId);
           console.log("createDocP終わり");
@@ -154,7 +156,7 @@ module.exports = (robot) => {
         console.log("最終的なリクエスト文: "+util.inspect(userParams, false, null));
 
         docs.documents.batchUpdate(userParams, (err, res) => {
-          console.log(documentId);
+          console.log(userDocumentId[getRoomId()]);
           if (err) { return console.log('The API returned an error: ' + err);}
           console.log("アップデートしました。");
           resolve(auth);
@@ -188,8 +190,8 @@ module.exports = (robot) => {
         // var fileId = "1Vjn9lqFmxyxDS9xzBT-_fo9WjW1hfI9SUtcYWdvoJHI";
         let destFilePath = './tmp/' + getRoomId() + '.pdf';
         var dest = fs.createWriteStream(destFilePath);
-        console.log("DL開始: " + documentId);
-        drive.files.export({fileId: documentId, mimeType: 'application/pdf'}, {responseType: 'stream'},
+        console.log("DL開始: " + userDocumentId[getRoomId()]);
+        drive.files.export({fileId: userDocumentId[getRoomId()], mimeType: 'application/pdf'}, {responseType: 'stream'},
         function(err, res){
           if (err) {return console.error(err);}
           res.data
@@ -223,6 +225,7 @@ module.exports = (robot) => {
       return new Promise(function(resolve, reject) {
         // PDFファイル送信まで達成したら、変数にあるコンテンツ内容とサーバのPDFを削除
         delete inputText[getRoomId()];
+        delete userDocumentId[getRoomId()];
         resolve();
         // fs.unlink(filePath, (err) => {
         //   if (err) {throw err;}
@@ -316,8 +319,15 @@ module.exports = (robot) => {
       // inputText["001"] でメッセージの配列を取得できる
       _00010001: ['# 授業メモ', '## 第12回 7/10',],
       _00010002: ['# 授業メモ', '## 第12回 7/10',],
+    };
+    var userNoteMode = { // trueのときは入力をすべてノートに入力する
+      _00010001: false,
+      _00010002: false,
+    };
+    var userDocumentId = {
+      _00010001: "testDocumentId",
+      _00010002: "testDocumentId",
     }
-    var noteMode = false; // trueのときは入力をすべてノートに入力する
 
     function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
       // var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
@@ -348,7 +358,8 @@ module.exports = (robot) => {
       return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
     }
     function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
-      const params = {"documentId": documentId,"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
+      console.log(userDocumentId);
+      const params = {"documentId": userDocumentId[getRoomId()],"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
       console.log("ここでparams"+util.inspect(params));
       messages.reverse();
 
