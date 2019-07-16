@@ -362,6 +362,26 @@ module.exports = (robot) => {
     function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
       return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
     }
+    function generateParagraphBullets() {
+      return {
+        "createParagraphBullets": {
+        "range": {
+          "startIndex": 1,
+          "endIndex": 2
+        },
+        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE"
+      }};
+    }
+    function deleteParagraphBullets() {
+      return {
+        "deleteParagraphBullets": {
+          "range": {
+            "startIndex": 1,
+            "endIndex": 2
+          }
+        }
+      };
+    }
     function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
       console.log(userDocumentId);
       const params = {"documentId": userDocumentId[getRoomId()],"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
@@ -387,6 +407,13 @@ module.exports = (robot) => {
         } else if (messages[m].match(/^###### (.*)$/ig)) {
           params.resource.requests.push(generateStyleChangeParams(6));
           slicedMessage = messages[m].slice(7);
+        } else if (messages[m].match(/^- (.*)$/ig)) { // 箇条書き
+          params.resource.requests.push(generateStyleChangeParams(0)); // テキストスタイルはNORMAL
+          params.resource.requests.push(generateParagraphBullets()); // 箇条書きスタイルを生成
+          slicedMessage = messages[m].slice(2);
+          params.resource.requests.push(generateTextParams(["\n", slicedMessage])); // テキスト挿入
+          params.resource.requests.push(deleteParagraphBullets()); // 箇条書きスタイルを削除
+          continue;
         } else {
           params.resource.requests.push(generateStyleChangeParams(0));
         }
