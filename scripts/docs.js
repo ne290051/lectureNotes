@@ -7,6 +7,7 @@ const {google} = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
+const fontList = ['変更しない', 'M PLUS Rounded 1c'];
 
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
@@ -56,6 +57,31 @@ module.exports = (robot) => {
     delete inputText[getRoomId()];
     res.send("ノートの内容を削除しました。");
   });
+  var questionSentId = {}; // ルームIDごとに質問IDを格納する
+  robot.respond(/theme$/i, (res) => {
+    res.send({
+      question: 'テーマを変更しますか？',
+      options: fontList,
+      onsend: (sent) => {
+        questionSentId[res.message.rooms] = sent.message.id;
+        console.log(questionSentId);
+      }
+    });
+  });
+  robot.respond('select', (res) => { // 相手が回答したらセレクトスタンプを締め切る
+    if (res.json.response !== null) {
+      userTheme[getRoomId()] = res.json.response;
+      console.log(userTheme);
+      res.send({
+        text: 'テーマの変更を受け付けました: ' + res.json.options[res.json.response],
+        onsend: (sent) => {
+          res.send({
+            close_select: questionSentId[res.message.rooms]
+          });
+        }
+      });
+    }
+  })
   robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
     var slicedMessage = res.message.text.slice(6); // 先頭のHubot を取り除く
     console.log(slicedMessage);
@@ -334,6 +360,11 @@ module.exports = (robot) => {
       _00010002: "testParams",
     }
 
+    var userTheme = {
+      _00010001: 0,
+      _00010002: 0,
+    }
+
     function storeMessage(roomId, message) { // roomIdをキーとするメッセージの配列を作る
       // var slicedMessage = message.slice(6); // 先頭のHubot を取り除く
       if (inputText[roomId]) {
@@ -422,22 +453,3 @@ module.exports = (robot) => {
       return params;
     }
   };
-  /* 見出し1にするリクエスト
-  手順: 下から解析する、下からスタイル変更リクエストを出し、先頭に挿入する
-  {
-  "requests": [
-  {
-  "updateParagraphStyle": {
-  "range": {
-  "startIndex": 1,
-  "endIndex": 2
-},
-"paragraphStyle": {
-"namedStyleType": "HEADING_1"
-},
-"fields": "*"
-}
-}
-]
-}
-*/
