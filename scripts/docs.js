@@ -83,10 +83,22 @@ module.exports = (robot) => {
       });
     }
   })
+  robot.respond(/help$/i, (res) => {
+    res.send("講義ノート作成Bot\n\n" +
+    "ボットに話しかけた内容からドキュメントを作成し、PDFをトークルームに送信します。\n\n" +
+    "使用方法\n" +
+    "noteコマンドでノートの作成を開始、もう一度noteコマンドを押すまでがノート内容となります。\n\n" +
+    "noteモード中に使える機能\n" +
+    "mynote -> ノート内容の確認\n" +
+    "delete -> ノート内容をすべて削除\n\n" +
+    "ノートモードが終了すると、内容を送信します。この内容ドキュメントを作成するには、dコマンドを送信します。\n" +
+    "少し待つと、チャットボットからPDFが送られてきます。"
+    );
+  })
   robot.respond(/(.*)/i, (res) => { // noteモード中はメッセージをためる
     var slicedMessage = res.message.text.slice(6); // 先頭のHubot を取り除く
     console.log(slicedMessage);
-    if ( slicedMessage.search(/(^|\n)(t|note|d|mynote|delete)$/i) != -1 ) { // 他のコマンドと競合しないようにする
+    if ( slicedMessage.search(/(^|\n)(t|note|d|mynote|delete|help)$/i) != -1 ) { // 他のコマンドと競合しないようにする
       return;
     } else if (userNoteMode[getRoomId()] == true) {
       // storeMessage(res.message.room, res.match[1])
