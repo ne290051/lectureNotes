@@ -7,7 +7,7 @@ const {google} = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const TOKEN_PATH = 'token.json';
 var util = require('util');
-const fontList = ['変更しない', 'M PLUS Rounded 1c'];
+const fontList = ['Arial', 'M PLUS Rounded 1c'];
 
 module.exports = (robot) => {
   robot.respond(/DOC$/i, (res) => {
@@ -43,6 +43,7 @@ module.exports = (robot) => {
     if (userNoteMode[getRoomId()] == false || typeof userNoteMode[getRoomId()] == "undefined") {
       res.send("markdownからノートを作ります。");
       userNoteMode[getRoomId()] = true;
+      userTheme[getRoomId()] = 0;
     } else {
       userNoteMode[getRoomId()] = false;
       res.send("noteモードを終了しました。");
@@ -185,7 +186,7 @@ module.exports = (robot) => {
         docs.documents.batchUpdate(userParams[getRoomId()], (err, res) => {
           console.log(userDocumentId[getRoomId()]);
           if (err) { return console.log('The API returned an error: ' + err);}
-          console.log("アップデートしました。");
+          console.log("アップデートしました");
           resolve(auth);
         });
       });
@@ -393,6 +394,19 @@ module.exports = (robot) => {
     function generateStyleChangeParams(level) { // 見出しのスタイル変更リクエストのparams
       return {"updateParagraphStyle": {"range": {"startIndex": 1,"endIndex": 2},"fields": "*","paragraphStyle": {"namedStyleType": namedStyle[level]}}};
     }
+    function generateFontChangeParams(themeId) { // フォント変更リクエストのparams
+      return {
+        "updateTextStyle": 
+        {"fields": "*",
+        "range": {
+          "startIndex": 1,"endIndex": 2
+        },
+        "textStyle": {
+          "weightedFontFamily": {
+            "fontFamily": fontList[themeId]
+          }
+        }}};
+    }
     function generateParagraphBullets() {
       return {
         "createParagraphBullets": {
@@ -416,6 +430,7 @@ module.exports = (robot) => {
     function sendMessageBuilder(messages) { // メッセージの配列を渡すと、フォーマットと挿入文字列を作成して返す
       console.log(userDocumentId);
       const params = {"documentId": userDocumentId[getRoomId()],"resource": {"requests": []}}; // ドキュメント変更の基本的なparams、これに追加していく
+      params.resource.requests.push(generateFontChangeParams(userTheme[getRoomId()])); // ユーザが選択した、文書全体のフォントテーマをリクエストに追加
       messages.reverse();
 
       for (var m in messages) {
