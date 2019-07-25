@@ -419,7 +419,7 @@ module.exports = (robot) => {
       messages.reverse();
 
       for (var m in messages) {
-        var slicedMessage = messages[m];
+        var slicedMessage = messages[m]; // 本文テキストは切り出ししない
         if (messages[m].match(/^# (.*)$/ig)) {
           params.resource.requests.push(generateStyleChangeParams(1));
           slicedMessage = messages[m].slice(2);
@@ -448,7 +448,13 @@ module.exports = (robot) => {
         } else {
           params.resource.requests.push(generateStyleChangeParams(0));
         }
-        params.resource.requests.push(generateTextParams(["\n", slicedMessage]));
+        if (m == messages.length-1) {
+          // 文章の最後の要素なら、改行を入れないで文章を挿入
+          params.resource.requests.push(generateTextParams([slicedMessage]));
+        } else {
+          // 文章の最後以外の要素なら、次の文章のために改行記号も追加
+          params.resource.requests.push(generateTextParams(["\n", slicedMessage]));
+        }
       }
       return params;
     }
